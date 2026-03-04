@@ -1,0 +1,31 @@
+# Секретные данные — никогда не коммитить!
+files/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Виртуальное окружение
+venv/
+.venv/
+env/
+
+# Отчёты тестов
+reports/
+allure-results/
+allure-report/
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Драйверы браузера
+geckodriver.log
+chromedriver.log
