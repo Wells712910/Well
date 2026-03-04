@@ -13,26 +13,25 @@ from config.config import Config
 
 class DriverManager:
     @staticmethod
-    def get_driver(browser="chrome"):
+    def get_driver(browser=None):
         """
-        Получение драйвера для указанного браузера
-        :param browser: "chrome", "firefox", "edge"
-        :return: WebDriver instance
+        Получение драйвера для указанного браузера.
+        Если browser не указан — берёт из Config.
         """
-        if browser.lower() == "chrome":
+        browser = (browser or Config.BROWSER).lower()
+
+        if browser == "chrome":
             return DriverManager._get_chrome_driver()
-        elif browser.lower() == "firefox":
+        elif browser == "firefox":
             return DriverManager._get_firefox_driver()
-        elif browser.lower() == "edge":
+        elif browser == "edge":
             return DriverManager._get_edge_driver()
         else:
-            raise ValueError(f"Unsupported browser: {browser}")
+            raise ValueError(f"Неподдерживаемый браузер: {browser}. Допустимые: chrome, firefox, edge")
 
     @staticmethod
     def _get_chrome_driver():
         options = ChromeOptions()
-
-        # Основные настройки
         options.add_argument("--start-maximized")
         options.add_argument("--disable-notifications")
         options.add_argument("--disable-popup-blocking")
@@ -40,52 +39,52 @@ class DriverManager:
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-
-        # Оптимизация производительности
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
-        options.add_experimental_option('useAutomationExtension', False)
-
-        # Для отключения автоматизации (если сайт блокирует Selenium)
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        prefs = {
+        options.add_experimental_option("useAutomationExtension", False)
+        options.add_experimental_option("prefs", {
             "credentials_enable_service": False,
             "profile.password_manager_enabled": False,
             "profile.default_content_setting_values.notifications": 2
-        }
-        options.add_experimental_option("prefs", prefs)
+        })
 
-        service = ChromeService(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
+        if Config.HEADLESS:
+            options.add_argument("--headless=new")
 
-        # Установка таймаутов
+        driver = webdriver.Chrome(
+            service=ChromeService(ChromeDriverManager().install()),
+            options=options
+        )
         driver.implicitly_wait(Config.IMPLICITLY_WAIT)
         driver.set_page_load_timeout(Config.PAGE_LOAD_TIMEOUT)
-
         return driver
 
     @staticmethod
     def _get_firefox_driver():
         options = FirefoxOptions()
-        options.add_argument("--start-maximized")
+        if Config.HEADLESS:
+            options.add_argument("--headless")
 
-        service = FirefoxService(GeckoDriverManager().install())
-        driver = webdriver.Firefox(service=service, options=options)
-
+        driver = webdriver.Firefox(
+            service=FirefoxService(GeckoDriverManager().install()),
+            options=options
+        )
+        driver.maximize_window()
         driver.implicitly_wait(Config.IMPLICITLY_WAIT)
         driver.set_page_load_timeout(Config.PAGE_LOAD_TIMEOUT)
-
         return driver
 
     @staticmethod
     def _get_edge_driver():
         options = EdgeOptions()
         options.add_argument("--start-maximized")
+        if Config.HEADLESS:
+            options.add_argument("--headless=new")
 
-        service = EdgeService(EdgeChromiumDriverManager().install())
-        driver = webdriver.Edge(service=service, options=options)
-
+        driver = webdriver.Edge(
+            service=EdgeService(EdgeChromiumDriverManager().install()),
+            options=options
+        )
         driver.implicitly_wait(Config.IMPLICITLY_WAIT)
         driver.set_page_load_timeout(Config.PAGE_LOAD_TIMEOUT)
-
         return driver

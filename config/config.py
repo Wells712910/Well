@@ -1,18 +1,16 @@
-from dotenv import load_dotenv
-import os
-
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class Config:
-    BASE_URL = "https://mis.qa.zabota.space"
-    EMAIL = os.getenv("EMAIL", "bleyding7103@gmail.com")
-    PASSWORD = os.getenv("PASSWORD", "BeuSEYUcj1Vp")
+    BASE_URL = os.getenv("BASE_URL", "https://mis.qa.zabota.space")
+    EMAIL = os.getenv("EMAIL")
+    PASSWORD = os.getenv("PASSWORD")
     IMPLICITLY_WAIT = 10
     PAGE_LOAD_TIMEOUT = 30
-    BROWSER = os.getenv("BROWSER", "chrome")  # chrome, firefox, edge
+    BROWSER = os.getenv("BROWSER", "chrome")
     HEADLESS = os.getenv("HEADLESS", "false").lower() == "true"
     SCREENSHOTS_PATH = "screenshots/"
 
@@ -24,5 +22,19 @@ class Config:
         "birthday": "12.05.2003",
         "gender": "male",
         "phone": "+79951564551",
-        "email": "bleyding7103+test@gmail.com"
+        "email": "test+patient@example.com"
     }
+
+    @classmethod
+    def validate(cls):
+        """Проверка обязательных переменных окружения"""
+        missing = []
+        if not cls.EMAIL:
+            missing.append("EMAIL")
+        if not cls.PASSWORD:
+            missing.append("PASSWORD")
+        if missing:
+            raise EnvironmentError(
+                f"Отсутствуют переменные окружения: {', '.join(missing)}. "
+                f"Создайте файл .env на основе .env.example"
+            )

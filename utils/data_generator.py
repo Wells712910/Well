@@ -1,264 +1,115 @@
-import pytest
-import time
-from config.config import Config
-from pages.login_page import LoginPage
-from pages.patients_page import PatientsPage
-from utils.driver_manager import DriverManager
 import random
+import string
+import time
+from datetime import datetime, timedelta
 
 
-class TestAddPatient:
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        self.driver = DriverManager.get_driver(Config.BROWSER)
-        self.driver.get(Config.BASE_URL + "/login")
-        self.login_page = LoginPage(self.driver)
-        self.patients_page = PatientsPage(self.driver)
+class DataGenerator:
+    """Генератор тестовых данных для пациентов"""
 
-        # Логинимся перед каждым тестом
-        self.login_page.login(Config.EMAIL, Config.PASSWORD)
-        time.sleep(2)  # Даем время для загрузки главной страницы
+    MALE_NAMES = [
+        'Александр', 'Дмитрий', 'Михаил', 'Андрей', 'Сергей',
+        'Владимир', 'Алексей', 'Иван', 'Евгений', 'Николай',
+        'Роман', 'Павел', 'Константин'
+    ]
+    FEMALE_NAMES = [
+        'Анна', 'Елена', 'Ольга', 'Мария', 'Наталья', 'Ирина',
+        'Светлана', 'Татьяна', 'Екатерина', 'Юлия', 'Анастасия',
+        'Виктория', 'Дарья'
+    ]
+    MALE_SURNAMES = [
+        'Иванов', 'Петров', 'Сидоров', 'Смирнов', 'Кузнецов',
+        'Попов', 'Васильев', 'Павлов', 'Семенов', 'Голубев',
+        'Виноградов', 'Богданов'
+    ]
+    FEMALE_SURNAMES = [
+        'Иванова', 'Петрова', 'Сидорова', 'Смирнова', 'Кузнецова',
+        'Попова', 'Васильева', 'Павлова', 'Семенова', 'Голубева',
+        'Виноградова', 'Богданова'
+    ]
+    MALE_MIDDLENAMES = [
+        'Александрович', 'Дмитриевич', 'Михайлович', 'Андреевич',
+        'Сергеевич', 'Владимирович', 'Алексеевич', 'Иванович',
+        'Евгеньевич', 'Николаевич'
+    ]
+    FEMALE_MIDDLENAMES = [
+        'Александровна', 'Дмитриевна', 'Михайловна', 'Андреевна',
+        'Сергеевна', 'Владимировна', 'Алексеевна', 'Ивановна',
+        'Евгеньевна', 'Николаевна'
+    ]
 
-        yield
+    TRANSLIT = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd',
+        'е': 'e', 'ё': 'yo', 'ж': 'zh', 'з': 'z', 'и': 'i',
+        'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n',
+        'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't',
+        'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch',
+        'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '',
+        'э': 'e', 'ю': 'yu', 'я': 'ya'
+    }
 
-        # После каждого теста делаем скриншот
-        test_name = self.__class__.__name__ + "_" + getattr(self, '_testMethodName', 'unknown')
-        screenshot_path = f"screenshots/{test_name}_{int(time.time())}.png"
-        self.driver.save_screenshot(screenshot_path)
+    @classmethod
+    def name(cls, gender='male') -> str:
+        return random.choice(cls.MALE_NAMES if gender == 'male' else cls.FEMALE_NAMES)
 
-        self.driver.quit()
+    @classmethod
+    def surname(cls, gender='male') -> str:
+        return random.choice(cls.MALE_SURNAMES if gender == 'male' else cls.FEMALE_SURNAMES)
 
-    def test_add_patient_with_all_required_fields(self):
-        """Тест добавления пациента с заполнением всех обязательных полей"""
-        # Генерируем случайные данные
-        firstname = self.patients_page.generate_random_name('male')
-        surname = self.patients_page.generate_random_surname('male')
-        middlename = self.patients_page.generate_random_middlename('male')
-        birthday = self.patients_page.generate_random_birthday()
-        phone = self.patients_page.generate_random_phone()
+    @classmethod
+    def middlename(cls, gender='male') -> str:
+        return random.choice(cls.MALE_MIDDLENAMES if gender == 'male' else cls.FEMALE_MIDDLENAMES)
 
-        print(f"Добавляем пациента: {surname} {firstname} {middlename}")
-        print(f"Дата рождения: {birthday}, Телефон: {phone}")
+    @classmethod
+    def phone(cls) -> str:
+        """Генерация номера по маске +79XXXXXXXXX"""
+        suffix = ''.join(random.choices('0123456789', k=9))
+        return f"+79{suffix}"
 
-        # Добавление пациента с ВСЕМИ обязательными полями
-        self.patients_page.add_new_patient(
-            firstname=firstname,
-            surname=surname,
-            middlename=middlename,
-            birthday=birthday,
-            gender="male",
-            phone=phone  # Телефон теперь обязательный
-        )
+    @classmethod
+    def email(cls, firstname=None, surname=None) -> str:
+        domains = ['gmail.com', 'yandex.ru', 'mail.ru', 'outlook.com']
+        domain = random.choice(domains)
+        if firstname and surname:
+            fn = cls._to_latin(firstname.lower())
+            sn = cls._to_latin(surname.lower())
+            username = f"{fn}.{sn}"
+        else:
+            username = ''.join(random.choices(string.ascii_lowercase, k=8))
+        numbers = ''.join(random.choices('0123456789', k=3))
+        return f"{username}{numbers}@{domain}"
 
-        # Проверка успешности сохранения
-        time.sleep(2)
-        is_success = self.patients_page.is_save_successful()
+    @classmethod
+    def unique_email(cls) -> str:
+        """Email с timestamp — гарантированно уникальный"""
+        return f"patient{int(time.time())}@test.com"
 
-        assert is_success, "Пациент не был сохранен. Проверьте заполнение всех обязательных полей."
+    @classmethod
+    def birthday(cls, min_age=18, max_age=70) -> str:
+        """Дата рождения в формате ДД.ММ.ГГГГ"""
+        now = datetime.now()
+        max_birth = now - timedelta(days=min_age * 365)
+        min_birth = now - timedelta(days=max_age * 365)
+        days_range = (max_birth - min_birth).days
+        birth_date = min_birth + timedelta(days=random.randint(0, days_range))
+        return birth_date.strftime("%d.%m.%Y")
 
-    def test_add_patient_with_all_fields_including_email(self):
-        """Тест добавления пациента со всеми полями (включая email)"""
-        # Генерируем случайные данные
-        firstname = self.patients_page.generate_random_name('female')
-        surname = self.patients_page.generate_random_surname('female')
-        middlename = self.patients_page.generate_random_middlename('female')
-        birthday = self.patients_page.generate_random_birthday()
-        phone = self.patients_page.generate_random_phone()
-        email = self.patients_page.generate_random_email()
-
-        print(f"Добавляем пациента: {surname} {firstname} {middlename}")
-        print(f"Дата рождения: {birthday}, Телефон: {phone}, Email: {email}")
-
-        # Добавление пациента со всеми полями
-        self.patients_page.add_new_patient(
-            firstname=firstname,
-            surname=surname,
-            middlename=middlename,
-            birthday=birthday,
-            gender="female",
-            phone=phone,
-            email=email
-        )
-
-        # Проверка успешности сохранения
-        time.sleep(2)
-        is_success = self.patients_page.is_save_successful()
-
-        assert is_success, "Пациент не был сохранен со всеми полями."
-
-    def test_add_multiple_random_patients(self):
-        """Тест добавления нескольких пациентов со случайными данными"""
-        patients_to_add = 3
-        successful_saves = 0
-
-        for i in range(patients_to_add):
-            print(f"\nДобавление пациента {i + 1}/{patients_to_add}")
-
-            # Чередуем мужской и женский пол
-            gender = 'male' if i % 2 == 0 else 'female'
-
-            # Добавляем случайного пациента
-            patient_data = self.patients_page.add_random_patient(gender)
-
-            # Проверяем успешность
-            time.sleep(1.5)
-            if self.patients_page.is_save_successful():
-                successful_saves += 1
-                print(f"✓ Пациент {patient_data['surname']} {patient_data['firstname']} успешно добавлен")
-            else:
-                errors = self.patients_page.get_validation_errors()
-                print(f"✗ Ошибка при добавлении пациента: {errors}")
-
-                # Если есть ошибки, пробуем закрыть форму и начать заново
-                try:
-                    # Кнопка отмены или закрытия
-                    cancel_button = self.driver.find_element(
-                        "xpath", "//div[@role='dialog']//button[1]"
-                    )
-                    cancel_button.click()
-                    time.sleep(0.5)
-                except:
-                    pass
-
-        print(f"\nИтог: успешно добавлено {successful_saves}/{patients_to_add} пациентов")
-        assert successful_saves == patients_to_add, f"Не все пациенты были добавлены. Успешно: {successful_saves}/{patients_to_add}"
-
-    @pytest.mark.parametrize("gender", ["male", "female"])
-    def test_add_patient_by_gender(self, gender):
-        """Параметризованный тест добавления пациентов разного пола"""
-        # Генерируем соответствующие данные
-        firstname = self.patients_page.generate_random_name(gender)
-        surname = self.patients_page.generate_random_surname(gender)
-        middlename = self.patients_page.generate_random_middlename(gender)
-        birthday = self.patients_page.generate_random_birthday()
-        phone = self.patients_page.generate_random_phone()
-
-        gender_display = "Мужской" if gender == "male" else "Женский"
-        print(f"Добавляем {gender_display} пациента: {surname} {firstname}")
-
-        self.patients_page.add_new_patient(
-            firstname=firstname,
-            surname=surname,
-            middlename=middlename,
-            birthday=birthday,
-            gender=gender,
-            phone=phone
-        )
-
-        time.sleep(2)
-        assert self.patients_page.is_save_successful(), f"Не удалось добавить {gender_display} пациента"
-
-    def test_add_patient_with_min_age(self):
-        """Тест добавления молодого пациента (18 лет)"""
-        from datetime import datetime, timedelta
-
-        # Дата рождения ровно 18 лет назад
-        today = datetime.now()
-        birthday_18 = (today - timedelta(days=18 * 365)).strftime("%d.%m.%Y")
-
-        self.patients_page.add_new_patient(
-            firstname="Максим",
-            surname="Молодцов",
-            middlename="Александрович",
-            birthday=birthday_18,
-            gender="male",
-            phone=self.patients_page.generate_random_phone()
-        )
-
-        time.sleep(2)
-        assert self.patients_page.is_save_successful(), "Не удалось добавить молодого пациента"
-
-    def test_add_patient_with_max_age(self):
-        """Тест добавления пациента пожилого возраста (70 лет)"""
-        from datetime import datetime, timedelta
-
-        # Дата рождения 70 лет назад
-        today = datetime.now()
-        birthday_70 = (today - timedelta(days=70 * 365)).strftime("%d.%m.%Y")
-
-        self.patients_page.add_new_patient(
-            firstname="Василий",
-            surname="Мудров",
-            middlename="Петрович",
-            birthday=birthday_70,
-            gender="male",
-            phone=self.patients_page.generate_random_phone()
-        )
-
-        time.sleep(2)
-        assert self.patients_page.is_save_successful(), "Не удалось добавить пожилого пациента"
-
-    def test_phone_number_format_validation(self):
-        """Тест валидации формата номера телефона"""
-        test_phones = [
-            "+79991234567",  # Корректный
-            "+7 (999) 123-45-67",  # Возможно, неправильный
-            "89991234567",  # Без +7
-            "+7999123456",  # 10 цифр вместо 11
-            "+799912345678",  # 12 цифр вместо 11
-        ]
-
-        for phone in test_phones:
-            print(f"Проверка номера: {phone}")
-
-            self.patients_page.open_add_patient_form()
-
-            # Заполняем форму
-            self.patients_page.fill_patient_form(
-                firstname="Тест",
-                surname="Тестов",
-                middlename="Тестович",
-                birthday="01.01.1990",
-                gender="male",
-                phone=phone
-            )
-
-            self.patients_page.save_patient()
-            time.sleep(1)
-
-            errors = self.patients_page.get_validation_errors()
-            if errors:
-                print(f"  Ошибка: {errors}")
-
-            # Закрываем форму для следующего теста
-            try:
-                cancel_button = self.driver.find_element(
-                    "xpath", "//div[@role='dialog']//button[1]"
-                )
-                cancel_button.click()
-                time.sleep(0.5)
-            except:
-                # Если форма закрылась сама, продолжаем
-                pass
-
-
-# Дополнительные утилитарные функции
-def generate_test_data(count=5):
-    """Генерация тестовых данных для отладки"""
-    patients_page = PatientsPage(None)  # Создаем экземпляр только для генерации данных
-
-    test_data = []
-    for i in range(count):
-        gender = 'male' if i % 2 == 0 else 'female'
-        test_data.append({
-            'firstname': patients_page.generate_random_name(gender),
-            'surname': patients_page.generate_random_surname(gender),
-            'middlename': patients_page.generate_random_middlename(gender),
-            'birthday': patients_page.generate_random_birthday(),
+    @classmethod
+    def patient(cls, gender='male') -> dict:
+        """Полный набор данных пациента одним вызовом"""
+        fn = cls.name(gender)
+        sn = cls.surname(gender)
+        mn = cls.middlename(gender)
+        return {
+            'firstname': fn,
+            'surname': sn,
+            'middlename': mn,
+            'birthday': cls.birthday(),
             'gender': gender,
-            'phone': patients_page.generate_random_phone(),
-            'email': patients_page.generate_random_email()
-        })
+            'phone': cls.phone(),
+            'email': cls.email(fn, sn)
+        }
 
-    return test_data
-
-
-if __name__ == "__main__":
-    # Пример генерации тестовых данных
-    print("Примеры тестовых данных:")
-    for i, data in enumerate(generate_test_data(3), 1):
-        print(f"\nПациент {i}:")
-        print(f"  ФИО: {data['surname']} {data['firstname']} {data['middlename']}")
-        print(f"  Пол: {data['gender']}, Дата рождения: {data['birthday']}")
-        print(f"  Телефон: {data['phone']}")
-        print(f"  Email: {data['email']}")
+    @classmethod
+    def _to_latin(cls, text: str) -> str:
+        return ''.join(cls.TRANSLIT.get(ch, ch) for ch in text)
