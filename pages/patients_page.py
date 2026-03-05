@@ -69,7 +69,7 @@ class PatientsPage(BasePage):
         return False
 
     def add_new_patient(self, firstname, surname, middlename, birthday,
-                        gender='male', phone=None, email=None) -> tuple[bool, str]:
+                        gender='male', phone=None, email=None):
         if not self.open_add_patient_form():
             return False, "Не удалось открыть форму"
         self.fill_patient_form(firstname, surname, middlename, birthday, gender, phone, email)
@@ -89,7 +89,7 @@ class PatientsPage(BasePage):
     def is_save_successful(self) -> bool:
         return self.wait_for_disappear(self.MODAL_DIALOG)
 
-    def get_validation_errors(self) -> list[str]:
+    def get_validation_errors(self):
         errors = []
         try:
             for el in self.driver.find_elements(*self.ERROR_MESSAGE):

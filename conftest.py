@@ -1,5 +1,8 @@
 import os
+import time
 import pytest
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from config.config import Config
 from utils.driver_manager import DriverManager
 from pages.login_page import LoginPage
@@ -12,10 +15,7 @@ def pytest_configure(config):
 
 @pytest.fixture(scope="session")
 def driver():
-    """
-    Один браузер на всю сессию.
-    Закрывается после последнего теста.
-    """
+    """Один браузер на всю сессию."""
     _driver = DriverManager.get_driver()
     yield _driver
     _driver.quit()
@@ -23,24 +23,39 @@ def driver():
 
 @pytest.fixture(scope="session")
 def logged_in_driver(driver):
-    """
-    Браузер с уже выполненным входом.
-    Логинится один раз на всю сессию.
-    """
+    """Браузер с уже выполненным входом — логинится один раз."""
     driver.get(Config.BASE_URL + "/login")
     LoginPage(driver).login(Config.EMAIL, Config.PASSWORD)
     yield driver
 
 
 @pytest.fixture(autouse=True)
-def screenshot_on_failure(request, driver):
-    """Автоматический скриншот при падении теста"""
+def cleanup_after_test(request, driver):
+    """
+    После каждого теста:
+    - закрывает открытые модальные окна через ESC
+    - делает скриншот при падении
+    """
     yield
-    if request.node.rep_call.failed if hasattr(request.node, 'rep_call') else False:
-        os.makedirs(Config.SCREENSHOTS_PATH, exist_ok=True)
-        path = f"{Config.SCREENSHOTS_PATH}{request.node.name}.png"
-        driver.save_screenshot(path)
-        print(f"\nСкриншот сохранён: {path}")
+
+    # Закрываем модалку если она осталась открытой
+    try:
+        modals = driver.find_elements(By.XPATH, "//div[@role='dialog']")
+        if modals and any(m.is_displayed() for m in modals):
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
+            time.sleep(0.5)
+    except Exception:
+        pass
+
+    # Скриншот при падении
+    try:
+        if hasattr(request.node, 'rep_call') and request.node.rep_call.failed:
+            os.makedirs(Config.SCREENSHOTS_PATH, exist_ok=True)
+            path = f"{Config.SCREENSHOTS_PATH}{request.node.name}.png"
+            driver.save_screenshot(path)
+            print(f"\nСкриншот сохранён: {path}")
+    except Exception:
+        pass
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
